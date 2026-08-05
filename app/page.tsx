@@ -1,3 +1,4 @@
+import ShareActions from "./components/ShareActions";
 import UploadZone from "./components/UploadZone";
 import { WEDDING } from "@/lib/config";
 
@@ -7,7 +8,9 @@ export default function Home() {
   return (
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col px-4 py-10 sm:py-16">
       <header className="mb-10 text-center">
-        <p className="font-display text-sm uppercase tracking-[0.35em] text-base-content/50">
+        {/* Interlettrage resserré sur mobile : à cette taille, 0.35em ferait
+            passer « DE » à la ligne sur un écran de 375 px */}
+        <p className="font-display text-base uppercase tracking-[0.28em] text-base-content/50 sm:text-lg sm:tracking-[0.35em]">
           Les photos du mariage de
         </p>
 
@@ -26,9 +29,7 @@ export default function Home() {
           {WEDDING.dateLabel}
         </time>
 
-        <p className="mx-auto mt-8 max-w-md text-pretty text-base-content/70">
-          Tu as pris des photos&nbsp;? Dépose-les ici.
-        </p>
+        <ShareActions />
       </header>
 
       <UploadZone />

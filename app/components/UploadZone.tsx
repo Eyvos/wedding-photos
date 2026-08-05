@@ -248,7 +248,7 @@ export default function UploadZone() {
             autoComplete="given-name"
             enterKeyHint="done"
             maxLength={MAX_NAME_LENGTH}
-            placeholder="Camille"
+            placeholder="Alexandre/Séverine"
             className={`input input-lg w-full bg-base-100 ${nameError ? "input-error" : ""}`}
             defaultValue=""
             disabled={isUploading}
@@ -261,7 +261,7 @@ export default function UploadZone() {
           >
             {nameError
               ? "Indique ton prénom avant d'envoyer."
-              : "Pour que les mariés sachent qui a pris quoi."}
+              : "En cas d'homonyme, ajoute l'initiale de ton nom de famille (ex : Alexandre T)."}
           </p>
         </div>
       </div>
