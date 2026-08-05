@@ -1,26 +1,95 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@plugin "daisyui" {
+  themes: false;
+  logs: false;
+}
+
+/* ------------------------------------------------------------------ */
+/* Thème « rustique » — chic & rustique, nuances de crème et de brun.  */
+/* Tout se règle ici : changer une valeur suffit à reteinter le site.  */
+/* ------------------------------------------------------------------ */
+@plugin "daisyui/theme" {
+  name: "rustique";
+  default: true;
+  prefersdark: false;
+  color-scheme: light;
+
+  /* Fonds : papier crème, lin, sable */
+  --color-base-100: #faf6ee;
+  --color-base-200: #f2eade;
+  --color-base-300: #e5d9c6;
+  --color-base-content: #3a2e23;
+
+  /* Primaire : brun caramel — boutons, accents forts */
+  --color-primary: #8a6a45;
+  --color-primary-content: #fdfaf4;
+
+  /* Secondaire : taupe doux */
+  --color-secondary: #a89078;
+  --color-secondary-content: #fdfaf4;
+
+  /* Accent : vert eucalyptus — la touche végétale du rustique */
+  --color-accent: #6d7a5c;
+  --color-accent-content: #fdfaf4;
+
+  --color-neutral: #4a3b2e;
+  --color-neutral-content: #f7f1e6;
+
+  --color-info: #7c8c96;
+  --color-info-content: #ffffff;
+  --color-success: #6d7a5c;
+  --color-success-content: #ffffff;
+  --color-warning: #b5822f;
+  --color-warning-content: #ffffff;
+  --color-error: #a4503f;
+  --color-error-content: #ffffff;
+
+  /* Formes : coins généreux, rendu doux et artisanal */
+  --radius-selector: 1rem;
+  --radius-field: 0.75rem;
+  --radius-box: 1.25rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.28rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-cormorant);
+  --font-sans: var(--font-inter);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* Texture papier discrète : deux voiles très pâles, aucun asset externe */
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  background-color: var(--color-base-100);
+  background-image:
+    radial-gradient(
+      ellipse 80% 55% at 50% -10%,
+      color-mix(in oklab, var(--color-primary) 13%, transparent),
+      transparent
+    ),
+    radial-gradient(
+      ellipse 70% 50% at 100% 100%,
+      color-mix(in oklab, var(--color-accent) 11%, transparent),
+      transparent
+    );
+  background-attachment: fixed;
+}
+
+.font-display {
+  font-family: var(--font-cormorant), ui-serif, Georgia, serif;
+}
+
+/* Filet décoratif : un trait fin qui s'efface à ses extrémités */
+.rule {
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    color-mix(in oklab, var(--color-base-content) 28%, transparent),
+    transparent
+  );
 }
