@@ -56,10 +56,23 @@ C'est là que les photos atterriront, dans un sous-dossier par invité.
 droits et il faudra tout recommencer.
 
 1. Dans ton app, onglet **Permissions**.
-2. Coche **`files.content.write`**.
-   (Ne coche pas `files.content.read` : le site n'a pas besoin de lire, et moins
-   il a de droits, mieux c'est.)
+2. Coche exactement ces trois cases :
+
+   | Permission | À quoi elle sert |
+   | ---------- | ---------------- |
+   | `files.content.write` | déposer les photos |
+   | `files.metadata.read` | lister les invités et leurs photos |
+   | `files.content.read` | afficher et télécharger les photos |
+
+   Laisse tout le reste décoché — et surtout pas `files.permanent_delete` :
+   le site ne supprime rien, et il ne doit même pas pouvoir le faire.
+
 3. Clique **Submit** en bas de la page.
+
+> ⚠️ **Une permission ajoutée après coup ne s'applique pas au token existant.**
+> Si tu coches une case alors que le site tourne déjà, il faut refaire
+> l'étape 4 pour générer un refresh token neuf, puis le remplacer dans
+> `.env.local` et dans Vercel.
 
 ## Étape 3 — Récupérer la clé et le secret
 
@@ -169,7 +182,18 @@ compte : le mobile se comporte différemment du navigateur de bureau.
 
 ## Étape 8 — Après le mariage
 
-**Récupérer les photos :** sur dropbox.com, va dans
+**Récupérer les photos :** le plus simple est de passer par le site lui-même —
+*Voir et récupérer les photos* → **Tout télécharger**. Tu peux aussi n'emporter
+que les photos d'un invité, ou une sélection.
+
+Tout part dans un seul fichier ZIP, quel que soit le poids de l'album. La
+préparation dispose de cinq minutes chez l'hébergeur (`ARCHIVE_MAX_SECONDS`
+dans `lib/config.ts`, à garder égal au `maxDuration` de
+`app/api/download/route.ts`) : au-delà, la fonction est coupée et le fichier
+reste inachevé. Si cela devait arriver sur une connexion lente, télécharge
+plutôt invité par invité — ou passe par Dropbox, ci-dessous.
+
+Sinon, directement sur dropbox.com : va dans
 `Applications/photos-mariage-alex-seve`, clique les trois points → **Download**.
 Dropbox prépare un ZIP de tout le dossier.
 
@@ -184,6 +208,7 @@ photos déjà là ne bougent pas.
 | Symptôme | Cause probable | Quoi faire |
 | -------- | -------------- | ---------- |
 | « Impossible de préparer l'envoi » | Dropbox plein, ou variable d'env manquante | Vercel → *Logs* pour voir l'erreur exacte |
+| Les photos sont listées mais les vignettes restent vides | `files.content.read` manquant sur le token | Étape 2, puis **refaire l'étape 4** : un token ne gagne pas une permission après coup |
 | Les invités voient une page blanche | Déploiement raté | Vercel → *Deployments*, redéployer le dernier qui marchait |
 | Un invité dit « ça tourne sans fin » | Réseau saturé dans la salle | Lui dire de réessayer plus tard, ou depuis chez lui — le lien reste valable |
 

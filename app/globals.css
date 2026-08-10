@@ -83,6 +83,47 @@ body {
   font-family: var(--font-cormorant), ui-serif, Georgia, serif;
 }
 
+/* Tailwind v4 aligne les boutons sur le défaut HTML, `cursor: default` :
+   à la souris, plus rien ne distingue une pastille de sélection ou une
+   vignette cliquable d'une image inerte. On remet la main partout où l'on
+   peut cliquer — sauf sur ce qui est désactivé, qui ne réagira pas. */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+label[for],
+summary {
+  cursor: pointer;
+}
+
+/* Ce qui est hors de l'écran n'a pas besoin d'être mis en page tant qu'on ne
+   l'a pas atteint. Sur un album de plusieurs milliers de photos, c'est ce qui
+   garde le défilement fluide sur un téléphone.
+
+   Le piège est la place réservée : si le navigateur se trompe sur la hauteur
+   d'une case qu'il n'a pas encore dessinée, la page sursaute au défilement.
+   D'où deux variantes plutôt qu'une. */
+
+/* Vignette carrée : sa hauteur se déduit de sa largeur, sans rien connaître
+   de son contenu — il n'y a donc rien à deviner. */
+.tile-square {
+  aspect-ratio: 1;
+  content-visibility: auto;
+}
+
+/* Carte d'invité : hauteur dictée par le contenu. On annonce celle qu'elle
+   fait en pratique, et `auto` retient la vraie dès qu'elle a été dessinée
+   une fois. */
+.tile-card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 6.5rem;
+}
+
+/* Consultation plein écran : un fond presque noir, à peine teinté de brun,
+   pour que l'œil ne voie plus que la photo. */
+.viewer {
+  background: #1e1710;
+  color: #f2e9db;
+}
+
 /* Filet décoratif : un trait fin qui s'efface à ses extrémités */
 .rule {
   height: 1px;

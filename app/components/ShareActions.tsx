@@ -3,6 +3,8 @@
 import { create as createQr } from "qrcode";
 import { useEffect, useRef, useState } from "react";
 
+import { CheckIcon, LinkIcon, QrIcon } from "./icons";
+
 /** Modules blancs autour du code : 4 est le minimum de la norme QR. */
 const QR_MARGIN = 4;
 
@@ -148,61 +150,4 @@ function qrPathData(text: string): Omit<Qr, "url"> {
 
   const side = size + QR_MARGIN * 2;
   return { d, viewBox: `0 0 ${side} ${side}` };
-}
-
-/* --------------------------- Icônes (inline, aucune dépendance) ----------- */
-
-function LinkIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M10.5 13.5a3.5 3.5 0 0 0 5 0l3-3a3.54 3.54 0 0 0-5-5l-1.5 1.5" />
-      <path d="M13.5 10.5a3.5 3.5 0 0 0-5 0l-3 3a3.54 3.54 0 0 0 5 5l1.5-1.5" />
-    </svg>
-  );
-}
-
-function QrIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <rect x="3" y="3" width="7" height="7" rx="1.5" />
-      <rect x="14" y="3" width="7" height="7" rx="1.5" />
-      <rect x="3" y="14" width="7" height="7" rx="1.5" />
-      <path d="M14 14h3v3h-3zM20 14v.01M14 20v.01M20 20v.01M20 17v.01M17 20v.01" />
-    </svg>
-  );
-}
-
-function CheckIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="m5 13 4.5 4.5L19 7" />
-    </svg>
-  );
 }

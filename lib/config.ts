@@ -46,6 +46,43 @@ export const MAX_ATTEMPTS = 3;
 
 export const MAX_NAME_LENGTH = 40;
 
+/* -------------------------------------------------------------------------- */
+/* Consultation : de quoi tenir avec beaucoup de photos                        */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Photos posées d'un coup dans la grille. La page en rend une tranche, puis
+ * la suivante quand on approche du bas : un album de 5 000 photos n'a aucune
+ * raison de fabriquer 5 000 balises au premier affichage.
+ */
+export const GALLERY_PAGE_SIZE = 60;
+
+/** Aperçu affiché sur la carte d'un invité : quatre photos donnent le ton */
+export const GUEST_PREVIEW_COUNT = 4;
+
+/**
+ * Durée de vie maximale de la fonction qui fabrique une archive, en secondes.
+ *
+ * Une demande part toujours en **un seul fichier**, si gros soit-il : c'est
+ * ce temps-là qui décide si elle aboutit. Le ZIP est écrit vers le visiteur
+ * au fur et à mesure, donc la fonction reste ouverte tant qu'il n'a pas tout
+ * reçu — 300 s laissent passer plusieurs centaines de mégaoctets même sur
+ * une connexion modeste. C'est aussi le plafond de tous les plans Vercel
+ * (fluid compute, activé par défaut) ; s'il était désactivé, le compte
+ * gratuit retomberait à 60 s et il faudrait aligner cette valeur.
+ *
+ * Doit rester en accord avec le `maxDuration` exporté par
+ * `app/api/download/route.ts`.
+ */
+export const ARCHIVE_MAX_SECONDS = 300;
+
+/**
+ * Photos tirées de Dropbox en parallèle pendant la fabrication d'une archive.
+ * L'attente réseau domine largement : sans parallélisme, l'archive avance à
+ * la vitesse d'un aller-retour par photo.
+ */
+export const ARCHIVE_CONCURRENCY = 6;
+
 /** Extension d'un nom de fichier, en minuscules, sans le point */
 export function fileExtension(filename: string): string {
   const dot = filename.lastIndexOf(".");
@@ -56,4 +93,23 @@ export function isAllowedFile(filename: string): boolean {
   return (ALLOWED_EXTENSIONS as readonly string[]).includes(
     fileExtension(filename),
   );
+}
+
+/** Type MIME déduit de l'extension, pour servir une photo telle quelle. */
+export function imageMimeType(filename: string): string {
+  const extension = fileExtension(filename);
+  if (extension === "jpg" || extension === "jpeg") return "image/jpeg";
+  if (extension === "heic" || extension === "heif") return `image/${extension}`;
+  return (ALLOWED_EXTENSIONS as readonly string[]).includes(extension)
+    ? `image/${extension}`
+    : "application/octet-stream";
+}
+
+/** Taille lisible : « 850 Ko », « 4,2 Mo », « 1,3 Go » */
+export function formatBytes(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} Ko`;
+  if (bytes < 1024 * 1024 * 1024) {
+    return `${(bytes / (1024 * 1024)).toFixed(1).replace(".", ",")} Mo`;
+  }
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1).replace(".", ",")} Go`;
 }

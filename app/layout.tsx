@@ -34,7 +34,8 @@ const description = `Partage tes photos du mariage d'${COUPLE}, le ${WEDDING.dat
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title,
+  // Les pages internes complètent le titre plutôt que de le remplacer
+  title: { default: title, template: `%s — ${COUPLE}` },
   description,
   openGraph: {
     title,

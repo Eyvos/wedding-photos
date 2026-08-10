@@ -6,9 +6,12 @@ import {
   ACCEPT_ATTRIBUTE,
   MAX_FILE_SIZE,
   MAX_NAME_LENGTH,
+  formatBytes,
   isAllowedFile,
 } from "@/lib/config";
 import { runPool, uploadFile } from "@/lib/upload";
+
+import { CameraIcon, CheckIcon, CloseIcon } from "./icons";
 
 type Status = "pending" | "uploading" | "done" | "error";
 
@@ -26,11 +29,6 @@ const NAME_STORAGE_KEY = "wedding-photos:guest-name";
 
 /** Les HEIC d'iPhone ne s'affichent pas dans un <img> : pas de vignette. */
 const PREVIEWABLE = /^image\/(jpeg|png|gif|webp|avif)$/;
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} Ko`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
-}
 
 export default function UploadZone() {
   /** Prénom retenu au lancement de l'envoi, pour l'écran de remerciement */
@@ -447,7 +445,7 @@ function FileRow({
           <p className="truncate text-xs text-error">{item.error}</p>
         ) : (
           <p className="text-xs text-base-content/50">
-            {item.status === "done" ? "Envoyée" : formatSize(item.file.size)}
+            {item.status === "done" ? "Envoyée" : formatBytes(item.file.size)}
           </p>
         )}
       </div>
@@ -472,58 +470,5 @@ function StepBadge({ children }: { children: React.ReactNode }) {
     <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/12 font-display text-sm font-semibold text-primary">
       {children}
     </span>
-  );
-}
-
-/* --------------------------- Icônes (inline, aucune dépendance) ----------- */
-
-function CameraIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M3 8.5A2.5 2.5 0 0 1 5.5 6h1.2a1 1 0 0 0 .83-.45l.94-1.4A1 1 0 0 1 9.3 3.7h5.4a1 1 0 0 1 .83.45l.94 1.4A1 1 0 0 0 17.3 6h1.2A2.5 2.5 0 0 1 21 8.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z" />
-      <circle cx="12" cy="13" r="3.6" />
-    </svg>
-  );
-}
-
-function CheckIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="m5 13 4.5 4.5L19 7" />
-    </svg>
-  );
-}
-
-function CloseIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      aria-hidden="true"
-    >
-      <path d="M6 6l12 12M18 6L6 18" />
-    </svg>
   );
 }
