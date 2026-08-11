@@ -8,16 +8,20 @@ import {
   MAX_NAME_LENGTH,
   formatBytes,
   isAllowedFile,
+  isVideoFile,
 } from "@/lib/config";
+import { mediaCount } from "@/lib/gallery";
 import { runPool, uploadFile } from "@/lib/upload";
 
-import { CameraIcon, CheckIcon, CloseIcon } from "./icons";
+import { CameraIcon, CheckIcon, CloseIcon, VideoIcon } from "./icons";
 
 type Status = "pending" | "uploading" | "done" | "error";
 
 type Item = {
   id: string;
   file: File;
+  /** Une vidéo s'annonce, s'aperçoit et se refuse autrement qu'une photo */
+  video: boolean;
   /** objectURL pour la vignette, ou null si le format n'est pas affichable */
   preview: string | null;
   status: Status;
@@ -29,6 +33,11 @@ const NAME_STORAGE_KEY = "wedding-photos:guest-name";
 
 /** Les HEIC d'iPhone ne s'affichent pas dans un <img> : pas de vignette. */
 const PREVIEWABLE = /^image\/(jpeg|png|gif|webp|avif)$/;
+
+/** Combien de ces fichiers sont des vidéos — pour les libellés */
+function videosIn(items: Item[]): number {
+  return items.filter((item) => item.video).length;
+}
 
 export default function UploadZone() {
   /** Prénom retenu au lancement de l'envoi, pour l'écran de remerciement */
@@ -75,18 +84,27 @@ export default function UploadZone() {
       if (seenRef.current.has(key)) continue;
 
       if (!isAllowedFile(file.name)) {
-        refused.push(`${file.name} — ce n'est pas une photo`);
+        refused.push(`${file.name} — ce n'est ni une photo ni une vidéo`);
         continue;
       }
+
+      const video = isVideoFile(file.name);
+
       if (file.size > MAX_FILE_SIZE) {
-        refused.push(`${file.name} — trop lourde (150 Mo maximum)`);
+        refused.push(
+          video
+            ? `${file.name} — trop lourde (150 Mo maximum, environ 2 min en 1080p)`
+            : `${file.name} — trop lourde (150 Mo maximum)`,
+        );
         continue;
       }
 
       seenRef.current.add(key);
 
+      // Une vidéo se montre par sa première image ; le navigateur la peint
+      // depuis le fichier local, sans rien télécharger.
       let preview: string | null = null;
-      if (PREVIEWABLE.test(file.type)) {
+      if (video || PREVIEWABLE.test(file.type)) {
         preview = URL.createObjectURL(file);
         previewsRef.current.add(preview);
       }
@@ -94,6 +112,7 @@ export default function UploadZone() {
       additions.push({
         id: key,
         file,
+        video,
         preview,
         status: "pending",
         progress: 0,
@@ -216,14 +235,21 @@ export default function UploadZone() {
               Merci {sentName} !
             </h2>
             <p className="text-base-content/70">
-              {sent.length === 1
-                ? "Ta photo est bien arrivée."
-                : `Tes ${sent.length} photos sont bien arrivées.`}{" "}
-              Les mariés les retrouveront après la fête.
+              {sent.length === 1 ? (
+                <>
+                  {sent[0].video ? "Ta vidéo" : "Ta photo"} est bien arrivée.
+                  Les mariés la retrouveront après la fête.
+                </>
+              ) : (
+                <>
+                  Tes {mediaCount(sent.length, videosIn(sent))} sont bien
+                  arrivées. Les mariés les retrouveront après la fête.
+                </>
+              )}
             </p>
           </div>
           <button className="btn btn-primary btn-wide" onClick={reset}>
-            Envoyer d&apos;autres photos
+            Envoyer autre chose
           </button>
         </div>
       </section>
@@ -269,7 +295,9 @@ export default function UploadZone() {
         <div className="card-body gap-4 p-5 sm:p-6">
           <div className="flex items-center gap-2">
             <StepBadge>2</StepBadge>
-            <span className="font-display text-xl font-medium">Tes photos</span>
+            <span className="font-display text-xl font-medium">
+              Tes photos et vidéos
+            </span>
           </div>
 
           <button
@@ -298,9 +326,16 @@ export default function UploadZone() {
               <CameraIcon className="size-7" />
             </span>
             <span className="text-pretty text-center font-display text-2xl font-medium">
-              Clique pour parcourir ou prendre directement une photo
+              Clique pour parcourir, photographier ou filmer
             </span>
           </button>
+
+          {/* Dit avant de filmer ce qui serait refusé après : une vidéo trop
+              longue se découvrirait sinon au moment de l'envoi. */}
+          <p className="text-center text-sm text-base-content/60">
+            Photos et vidéos, jusqu&apos;à 150 Mo par fichier — soit environ
+            deux minutes filmées en 1080p.
+          </p>
 
           <input
             ref={inputRef}
@@ -380,12 +415,12 @@ export default function UploadZone() {
                   disabled={pending.length === 0}
                 >
                   {failed.length > 0
-                    ? `Réessayer ${failed.length} photo${failed.length > 1 ? "s" : ""}`
-                    : `Envoyer ${pending.length} photo${pending.length > 1 ? "s" : ""}`}
+                    ? `Réessayer ${mediaCount(failed.length, videosIn(failed))}`
+                    : `Envoyer ${mediaCount(pending.length, videosIn(pending))}`}
                 </button>
                 {sent.length > 0 && (
                   <p className="text-center text-sm text-base-content/60">
-                    {sent.length} photo{sent.length > 1 ? "s" : ""} déjà envoyée
+                    {mediaCount(sent.length, videosIn(sent))} déjà envoyée
                     {sent.length > 1 ? "s" : ""}.
                   </p>
                 )}
@@ -412,19 +447,37 @@ function FileRow({
   return (
     <li className="flex items-center gap-3 py-3">
       <div className="relative size-12 shrink-0 overflow-hidden rounded-field bg-base-300">
-        {item.preview ? (
-          // eslint-disable-next-line @next/next/no-img-element -- blob local, next/image ne sait pas l'optimiser
-          <img
-            src={item.preview}
-            alt=""
-            className="size-full object-cover"
-            loading="lazy"
-          />
-        ) : (
-          <span className="flex size-full items-center justify-center text-base-content/40">
+        {/* Posée dessous : elle reste visible si l'aperçu manque, et aussi
+            si le navigateur ne sait pas décoder le fichier (un .mov filmé en
+            HEVC, par exemple, hors de Safari). */}
+        <span className="absolute inset-0 flex items-center justify-center text-base-content/40">
+          {item.video ? (
+            <VideoIcon className="size-5" />
+          ) : (
             <CameraIcon className="size-5" />
-          </span>
-        )}
+          )}
+        </span>
+
+        {item.preview &&
+          (item.video ? (
+            // « #t=0.1 » demande la première image plutôt qu'un cadre noir
+            <video
+              src={`${item.preview}#t=0.1`}
+              muted
+              playsInline
+              preload="metadata"
+              className="relative size-full object-cover"
+            />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element -- blob local, next/image ne sait pas l'optimiser
+            <img
+              src={item.preview}
+              alt=""
+              className="relative size-full object-cover"
+              loading="lazy"
+            />
+          ))}
+
         {item.status === "done" && (
           <span className="absolute inset-0 flex items-center justify-center bg-accent/80 text-accent-content">
             <CheckIcon className="size-6" />
@@ -445,7 +498,9 @@ function FileRow({
           <p className="truncate text-xs text-error">{item.error}</p>
         ) : (
           <p className="text-xs text-base-content/50">
-            {item.status === "done" ? "Envoyée" : formatBytes(item.file.size)}
+            {item.status === "done"
+              ? "Envoyée"
+              : `${item.video ? "Vidéo · " : ""}${formatBytes(item.file.size)}`}
           </p>
         )}
       </div>

@@ -11,9 +11,9 @@
  * suppression n'est exposée — ce module n'en contient tout simplement pas.
  */
 
-import { isAllowedFile } from "./config";
+import { isAllowedFile, isVideoFile } from "./config";
 import {
-  photoDisplayName,
+  mediaDisplayName,
   slugify,
   UNKNOWN_GUEST,
   type Guest,
@@ -154,13 +154,18 @@ async function rpc<T>(endpoint: string, args: unknown): Promise<T> {
  * le fichier lui-même. On rend la `Response` telle quelle pour que la route
  * qui appelle puisse relayer le flux sans jamais tout charger en mémoire.
  */
-function contentCall(endpoint: string, args: unknown): Promise<Response> {
+function contentCall(
+  endpoint: string,
+  args: unknown,
+  extraHeaders: Record<string, string> = {},
+): Promise<Response> {
   return withToken((token) =>
     fetch(`${CONTENT_ENDPOINT}/${endpoint}`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
         "Dropbox-API-Arg": encodeApiArg(args),
+        ...extraHeaders,
       },
       cache: "no-store",
     }),
@@ -285,7 +290,7 @@ function groupByGuest(entries: DropboxEntry[]): Guest[] {
     const photos = byName.get(guest) ?? [];
     photos.push({
       path: entry.path_display,
-      name: photoDisplayName(entry.name),
+      name: mediaDisplayName(entry.name),
       guest,
       size: entry.size ?? 0,
       uploadedAt: entry.server_modified ?? "",
@@ -310,6 +315,7 @@ function groupByGuest(entries: DropboxEntry[]): Guest[] {
         name,
         slug,
         photos,
+        videos: photos.filter((photo) => isVideoFile(photo.path)).length,
         size: photos.reduce((sum, photo) => sum + photo.size, 0),
       };
     });
@@ -328,6 +334,10 @@ export type ThumbnailSize = (typeof THUMBNAIL_SIZES)[number];
 /**
  * Vignette JPEG générée par Dropbox. `strict` recadre au format demandé pour
  * la grille ; `bestfit` conserve les proportions pour l'affichage plein écran.
+ *
+ * Ne vaut que pour les images : Dropbox ne vignette pas les vidéos, et une
+ * demande sur un .mp4 revient en erreur. C'est à l'appelant de ne pas la
+ * poser — voir `api/thumb`.
  */
 export function getThumbnail(
   path: string,
@@ -342,17 +352,45 @@ export function getThumbnail(
   });
 }
 
-/** La photo d'origine, pleine résolution — pour le téléchargement. */
-export function downloadPhoto(path: string): Promise<Response> {
-  return contentCall("files/download", { path });
+/**
+ * Lien de lecture directe vers un fichier, valable 4 h côté Dropbox.
+ *
+ * Sert aux vidéos, et à elles seules. Une vidéo relayée par nos fonctions
+ * s'y retire octet par octet à chaque fois qu'on la regarde ou qu'on s'y
+ * déplace : le lecteur demande des morceaux (`Range`), et un morceau ne se
+ * met pas en cache au bord du CDN sous la même adresse que le fichier
+ * entier. Renvoyer le navigateur vers Dropbox lui fait parler directement au
+ * CDN qui héberge déjà le fichier — plus rien ne transite par Vercel.
+ *
+ * Le lien ne donne accès qu'à ce seul fichier, en lecture, et périme : la
+ * même posture que les liens d'envoi, déjà confiés au navigateur.
+ */
+export async function getTemporaryLink(path: string): Promise<string> {
+  const { link } = await rpc<{ link: string }>("files/get_temporary_link", {
+    path,
+  });
+
+  return link;
 }
 
 /**
- * Un chemin venu du navigateur ne doit pouvoir désigner qu'une photo de
+ * Le fichier d'origine, pleine résolution — pour le téléchargement.
+ *
+ * `range` relaie tel quel l'en-tête `Range` du navigateur : c'est ce qui
+ * permet de se déplacer dans une vidéo sans en avoir téléchargé la fin. La
+ * réponse est rendue telle quelle, 206 comprise, à charge pour la route de
+ * la répercuter.
+ */
+export function downloadPhoto(path: string, range?: string): Promise<Response> {
+  return contentCall("files/download", { path }, range ? { Range: range } : {});
+}
+
+/**
+ * Un chemin venu du navigateur ne doit pouvoir désigner qu'un souvenir de
  * l'album. L'app Dropbox est déjà confinée à son propre dossier ; ce filtre
  * ferme la porte aux chemins bricolés avant même de contacter Dropbox.
  */
-export function isPhotoPath(path: unknown): path is string {
+export function isMediaPath(path: unknown): path is string {
   return (
     typeof path === "string" &&
     path.startsWith("/") &&

@@ -1,8 +1,9 @@
 "use client";
 
 import { thumbUrl } from "@/lib/browser-download";
-import type { PhotoCard } from "@/lib/gallery";
+import { isVideo, type PhotoCard } from "@/lib/gallery";
 
+import { PlayIcon } from "./icons";
 import { useImageState } from "./useImageState";
 
 /**
@@ -35,6 +36,22 @@ type Props = {
 
 export default function Thumb({ photo, size, alt, eager }: Props) {
   const { state, bind } = useImageState();
+
+  // Dropbox ne vignette pas les vidéos, et en tirer une image de la première
+  // seconde coûterait le téléchargement du film pour chaque case de la
+  // grille. Un carré sombre et un triangle disent la même chose : ça se
+  // regarde, et ça bouge.
+  if (isVideo(photo)) {
+    return (
+      <span
+        className="flex size-full items-center justify-center bg-neutral text-neutral-content"
+        role="img"
+        aria-label={alt}
+      >
+        <PlayIcon className="w-1/3 opacity-80" />
+      </span>
+    );
+  }
 
   return (
     <span className="relative block size-full overflow-hidden bg-base-200">

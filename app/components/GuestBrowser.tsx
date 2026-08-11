@@ -5,13 +5,13 @@ import { useLinkStatus } from "next/link";
 import { useCallback, useState } from "react";
 
 import { formatBytes } from "@/lib/config";
-import { guestCount, photoCount, type GuestSummary } from "@/lib/gallery";
+import { guestCount, mediaCount, type GuestSummary } from "@/lib/gallery";
 
 import ActionBar from "./ActionBar";
 import ArchiveDialog from "./ArchiveDialog";
 import SelectMark from "./SelectMark";
 import Thumb from "./Thumb";
-import { DownloadIcon } from "./icons";
+import { DownloadIcon, PlayIcon } from "./icons";
 import { useArchiveDownload } from "./useArchiveDownload";
 
 /**
@@ -89,7 +89,8 @@ export default function GuestBrowser({ guests, total }: Props) {
                   {guest.name}
                 </p>
                 <p className="flex items-center gap-2 text-sm text-base-content/60">
-                  {photoCount(guest.count)} · {formatBytes(guest.size)}
+                  {mediaCount(guest.count, guest.videos)} ·{" "}
+                  {formatBytes(guest.size)}
                   <OpeningHint />
                 </p>
               </div>
@@ -142,6 +143,16 @@ function OpeningHint() {
 
 /** Mosaïque de quatre vignettes — l'ambiance de l'invité en un coup d'œil */
 function GuestPreview({ guest }: { guest: GuestSummary }) {
+  // Un invité qui n'a envoyé que des vidéos n'a aucune vignette à montrer :
+  // plutôt qu'un carré vide, la mosaïque dit ce qu'elle contient.
+  if (guest.preview.length === 0) {
+    return (
+      <div className="flex size-20 shrink-0 items-center justify-center rounded-field bg-neutral text-neutral-content">
+        <PlayIcon className="size-7 opacity-80" />
+      </div>
+    );
+  }
+
   return (
     <div className="grid size-20 shrink-0 grid-cols-2 grid-rows-2 gap-0.5 overflow-hidden rounded-field bg-base-200">
       {guest.preview.map((path) => (

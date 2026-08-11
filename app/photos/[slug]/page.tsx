@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 
 import { GALLERY_PAGE_SIZE, formatBytes } from "@/lib/config";
 import { listGuests } from "@/lib/dropbox";
-import { findGuest, photoCount, toCard } from "@/lib/gallery";
+import { findGuest, mediaCount, toCard } from "@/lib/gallery";
 
 import PageHeader from "../../components/PageHeader";
 import PhotoBrowser from "../../components/PhotoBrowser";
@@ -17,13 +17,20 @@ export default async function GuestPage(props: PageProps<"/photos/[slug]">) {
 
   if (!guest) notFound();
 
+  // « Télécharger les 1 vidéo » ne se dit pas : au singulier, le décompte
+  // n'apporte rien de plus que l'article.
+  const everythingLabel =
+    guest.photos.length === 1
+      ? `Télécharger la ${guest.videos === 1 ? "vidéo" : "photo"}`
+      : `Télécharger les ${mediaCount(guest.photos.length, guest.videos)}`;
+
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 py-8 sm:py-12">
       <PageHeader
         backHref="/photos?vue=invites"
         backLabel="Tous les invités"
         title={guest.name}
-        subtitle={`${photoCount(guest.photos.length)} · ${formatBytes(guest.size)}`}
+        subtitle={`${mediaCount(guest.photos.length, guest.videos)} · ${formatBytes(guest.size)}`}
       />
 
       {/* La clé force un remontage d'un invité à l'autre : sans elle, React
@@ -32,11 +39,12 @@ export default async function GuestPage(props: PageProps<"/photos/[slug]">) {
         key={guest.slug}
         initial={guest.photos.slice(0, GALLERY_PAGE_SIZE).map(toCard)}
         total={guest.photos.length}
+        videos={guest.videos}
         size={guest.size}
         source={{ scope: "guest", slug: guest.slug }}
         everything={{
           request: { scope: "guests", guests: [guest.name] },
-          label: `Télécharger les ${photoCount(guest.photos.length)}`,
+          label: everythingLabel,
         }}
       />
     </main>

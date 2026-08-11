@@ -15,6 +15,8 @@
 export type ZipEntry = {
   /** Chemin dans l'archive, séparateurs « / » */
   name: string;
+  /** Poids annoncé par le catalogue, pour doser les lectures d'avance */
+  size: number;
   /** Contenu, chargé seulement au moment où l'entrée est écrite */
   read: () => Promise<Uint8Array>;
   modified: Date;
@@ -52,10 +54,17 @@ type CentralRecord = {
  * dépasser la durée de vie d'une fonction serverless — le téléchargement se
  * lance alors, avance, puis s'arrête sans jamais aboutir. Les entrées
  * s'écrivent malgré tout dans l'ordre : seule la lecture est en avance.
+ *
+ * `budget` borne ce que ces lectures d'avance occupent en mémoire. Une entrée
+ * est tenue entière le temps de calculer son CRC : six photos de 4 Mo ne se
+ * remarquent pas, six vidéos de 150 Mo font tomber la fonction. Une lecture
+ * reste toujours autorisée, si grosse soit-elle, sans quoi une vidéo plus
+ * lourde que le budget bloquerait l'archive pour de bon.
  */
 export function createZipStream(
   entries: ZipEntry[],
   concurrency = 1,
+  budget = Number.POSITIVE_INFINITY,
 ): ReadableStream<Uint8Array> {
   const central: CentralRecord[] = [];
   let offset = 0;
@@ -63,14 +72,19 @@ export function createZipStream(
   let reading = 0;
   /** Prochaine entrée à écrire dans le flux */
   let writing = 0;
+  /** Poids annoncé des lectures en cours */
+  let held = 0;
 
   /** Lectures en vol, par index — au plus `concurrency` à la fois */
   const inFlight = new Map<number, Promise<Uint8Array | null>>();
 
   function readAhead() {
     while (inFlight.size < Math.max(concurrency, 1) && reading < entries.length) {
+      const entry = entries[reading];
+      if (inFlight.size > 0 && held + entry.size > budget) return;
+
       const index = reading++;
-      const entry = entries[index];
+      held += entry.size;
 
       inFlight.set(
         index,
@@ -92,6 +106,7 @@ export function createZipStream(
 
         const data = await inFlight.get(index)!;
         inFlight.delete(index);
+        held -= entry.size;
         // La place libérée relance aussitôt une lecture : le tuyau ne se
         // vide jamais entre deux écritures.
         readAhead();
@@ -138,6 +153,7 @@ export function createZipStream(
     cancel() {
       reading = entries.length;
       inFlight.clear();
+      held = 0;
     },
   });
 }

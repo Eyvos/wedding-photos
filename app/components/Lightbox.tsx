@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { photoDownloadUrl, thumbUrl } from "@/lib/browser-download";
-import type { PhotoCard } from "@/lib/gallery";
+import { mediaStreamUrl, photoDownloadUrl, thumbUrl } from "@/lib/browser-download";
+import { isVideo, type PhotoCard } from "@/lib/gallery";
 
 import {
   CheckIcon,
@@ -11,6 +11,7 @@ import {
   ChevronRightIcon,
   CloseIcon,
   DownloadIcon,
+  PlayIcon,
 } from "./icons";
 import { useImageState } from "./useImageState";
 
@@ -21,6 +22,10 @@ import { useImageState } from "./useImageState";
  * dans une bande qu'on déplace, ce qui rend le glissement continu plutôt
  * que saccadé. Seules les images voisines sont chargées — passer devant
  * 200 photos ne doit pas en télécharger 200.
+ *
+ * Une vidéo se joue sur place, dans la même pellicule. Elle n'est chargée
+ * que lorsqu'on est devant : les voisines n'affichent qu'un triangle, sinon
+ * traverser l'album mettrait en route trois films à la fois.
  */
 
 type Props = {
@@ -166,7 +171,7 @@ export default function Lightbox({
       className="viewer fixed inset-0 z-50 flex flex-col"
       role="dialog"
       aria-modal="true"
-      aria-label={`Photo ${index + 1} sur ${total}, envoyée par ${photo.guest}`}
+      aria-label={`${isVideo(photo) ? "Vidéo" : "Photo"} ${index + 1} sur ${total}, envoyée par ${photo.guest}`}
     >
       <header className="flex items-start justify-between gap-3 px-3 pt-3">
         <button
@@ -213,9 +218,12 @@ export default function Lightbox({
               className="flex h-full w-full shrink-0 items-center justify-center p-2"
             >
               {/* Seules la photo affichée et ses voisines sont chargées */}
-              {Math.abs(position - index) <= NEIGHBOURS && (
-                <Frame photo={current} active={position === index} />
-              )}
+              {Math.abs(position - index) <= NEIGHBOURS &&
+                (isVideo(current) ? (
+                  <VideoFrame photo={current} active={position === index} />
+                ) : (
+                  <Frame photo={current} active={position === index} />
+                ))}
             </div>
           ))}
         </div>
@@ -226,7 +234,7 @@ export default function Lightbox({
           className="btn btn-circle btn-ghost absolute left-2 top-1/2 hidden -translate-y-1/2 text-current sm:inline-flex"
           onClick={() => go(-1)}
           disabled={index === 0}
-          aria-label="Photo précédente"
+          aria-label="Précédente"
         >
           <ChevronLeftIcon className="size-6" />
         </button>
@@ -235,7 +243,7 @@ export default function Lightbox({
           className="btn btn-circle btn-ghost absolute right-2 top-1/2 hidden -translate-y-1/2 text-current sm:inline-flex"
           onClick={() => go(1)}
           disabled={index === photos.length - 1}
-          aria-label="Photo suivante"
+          aria-label="Suivante"
         >
           <ChevronRightIcon className="size-6" />
         </button>
@@ -308,6 +316,70 @@ function Frame({ photo, active }: { photo: PhotoCard; active: boolean }) {
         className="relative max-h-full max-w-full select-none object-contain"
         draggable={false}
       />
+    </div>
+  );
+}
+
+/**
+ * Une vidéo de la pellicule.
+ *
+ * `preload="metadata"` ne va chercher que l'en-tête du fichier : de quoi
+ * connaître la durée et afficher la barre de lecture, sans tirer le film
+ * entier de Dropbox pour quelqu'un qui ne fait que passer devant.
+ *
+ * Les gestes s'arrêtent sur le lecteur : sans cela, tirer la barre de
+ * progression ferait aussi glisser la pellicule vers la vidéo suivante. Le
+ * glissement reste possible de part et d'autre de l'image.
+ */
+function VideoFrame({ photo, active }: { photo: PhotoCard; active: boolean }) {
+  const [failed, setFailed] = useState(false);
+  const stop = (event: React.TouchEvent) => event.stopPropagation();
+
+  // Une vidéo filmée en HEVC — le réglage d'usine de l'iPhone — se lit dans
+  // Safari mais pas dans tous les navigateurs. Le fichier, lui, est intact :
+  // plutôt qu'un lecteur noir, on propose de l'emporter.
+  if (active && failed) {
+    return (
+      <div className="flex size-full flex-col items-center justify-center gap-4 px-6 text-center">
+        <span className="flex size-16 items-center justify-center rounded-full bg-white/10">
+          <PlayIcon className="size-8 opacity-50" />
+        </span>
+        <p className="text-pretty text-sm opacity-70">
+          Ce navigateur ne sait pas lire cette vidéo. Elle est intacte : en la
+          téléchargeant, elle s&apos;ouvrira normalement.
+        </p>
+        <a
+          className="btn btn-sm btn-primary"
+          href={photoDownloadUrl(photo)}
+          download={photo.name}
+        >
+          <DownloadIcon className="size-4" />
+          Télécharger la vidéo
+        </a>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex size-full items-center justify-center">
+      {active ? (
+        <video
+          src={mediaStreamUrl(photo)}
+          controls
+          playsInline
+          preload="metadata"
+          aria-label={`Vidéo envoyée par ${photo.guest}`}
+          className="max-h-full max-w-full"
+          onError={() => setFailed(true)}
+          onTouchStart={stop}
+          onTouchMove={stop}
+          onTouchEnd={stop}
+        />
+      ) : (
+        <span className="flex size-24 items-center justify-center rounded-full bg-white/10">
+          <PlayIcon className="size-10 opacity-60" />
+        </span>
+      )}
     </div>
   );
 }

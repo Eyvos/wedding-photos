@@ -80,7 +80,9 @@ export async function POST(request: Request) {
   }
 
   if (!isAllowedFile(filename)) {
-    return bad("Ce format de fichier n'est pas accepté (photos uniquement).");
+    return bad(
+      "Ce format de fichier n'est pas accepté (photos et vidéos uniquement).",
+    );
   }
 
   if (typeof size !== "number" || !Number.isFinite(size) || size <= 0) {
@@ -88,7 +90,7 @@ export async function POST(request: Request) {
   }
 
   if (size > MAX_FILE_SIZE) {
-    return bad("Cette photo dépasse 150 Mo.", 413);
+    return bad("Ce fichier dépasse 150 Mo.", 413);
   }
 
   if (typeof guestName !== "string" || guestName.trim().length === 0) {

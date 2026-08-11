@@ -26,6 +26,25 @@ export function CameraIcon({ className }: IconProps) {
   );
 }
 
+/** Une caméra — tout ce qui parle de vidéo */
+export function VideoIcon({ className }: IconProps) {
+  return (
+    <svg {...stroke} strokeWidth={1.5} className={className}>
+      <rect x="2.5" y="6" width="13" height="12" rx="2.5" />
+      <path d="m15.5 10.5 4.2-2.6a.8.8 0 0 1 1.3.7v6.8a.8.8 0 0 1-1.3.7l-4.2-2.6z" />
+    </svg>
+  );
+}
+
+/** Le triangle de lecture, posé sur la vignette d'une vidéo */
+export function PlayIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className={className}>
+      <path d="M9 6.8a.9.9 0 0 1 1.37-.77l7.1 4.43a.9.9 0 0 1 0 1.53l-7.1 4.43A.9.9 0 0 1 9 15.65z" />
+    </svg>
+  );
+}
+
 export function CheckIcon({ className }: IconProps) {
   return (
     <svg {...stroke} strokeWidth={2} className={className}>

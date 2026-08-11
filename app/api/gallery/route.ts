@@ -63,6 +63,11 @@ export async function GET(request: Request) {
 }
 
 function positiveInt(raw: string | null, fallback: number): number {
+  // `Number(null)` et `Number("")` valent 0, pas NaN : sans ce garde, un
+  // paramètre absent vaudrait zéro. Une demande sans `limit` renverrait
+  // alors une tranche vide au lieu de la tranche par défaut.
+  if (raw === null || raw.trim() === "") return fallback;
+
   const value = Number(raw);
   return Number.isInteger(value) && value >= 0 ? value : fallback;
 }

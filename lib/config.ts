@@ -15,13 +15,7 @@ export const WEDDING = {
 
 export const COUPLE = WEDDING.brideAndGroom.join(" & ");
 
-/**
- * Extensions acceptées. Photos uniquement — les vidéos de mariage
- * dépassent vite la limite de 150 Mo des liens d'upload temporaires.
- * Pour les autoriser malgré tout : ajouter "mp4", "mov" ci-dessous et
- * les types correspondants dans ACCEPT_ATTRIBUTE.
- */
-export const ALLOWED_EXTENSIONS = [
+export const IMAGE_EXTENSIONS = [
   "jpg",
   "jpeg",
   "png",
@@ -32,10 +26,31 @@ export const ALLOWED_EXTENSIONS = [
   "avif",
 ] as const;
 
-/** Valeur de l'attribut `accept` du <input type="file"> */
-export const ACCEPT_ATTRIBUTE = "image/*";
+/**
+ * Formats vidéo acceptés — ceux que produisent les téléphones (mp4 sur
+ * Android, mov sur iPhone) plus le webm des navigateurs. Volontairement
+ * courte : un format qu'aucun navigateur ne sait lire arriverait dans
+ * l'album sans jamais pouvoir s'y regarder.
+ */
+export const VIDEO_EXTENSIONS = ["mp4", "mov", "m4v", "webm"] as const;
 
-/** Limite dure de l'API Dropbox `get_temporary_upload_link` : 150 Mo */
+export const ALLOWED_EXTENSIONS = [
+  ...IMAGE_EXTENSIONS,
+  ...VIDEO_EXTENSIONS,
+] as const;
+
+/** Valeur de l'attribut `accept` du <input type="file"> */
+export const ACCEPT_ATTRIBUTE = "image/*,video/*";
+
+/**
+ * Limite dure de l'API Dropbox `get_temporary_upload_link` : 150 Mo.
+ *
+ * C'est elle qui borne la durée des vidéos — environ deux minutes filmées
+ * en 1080p, bien moins en 4K. La dépasser demanderait de faire transiter le
+ * fichier par nos fonctions serverless, en morceaux de quelques mégaoctets
+ * (`files/upload_session`) : les octets ne passeraient plus en direct vers
+ * Dropbox, et la bande passante Vercel s'en ressentirait.
+ */
 export const MAX_FILE_SIZE = 150 * 1024 * 1024;
 
 /** Nombre d'uploads menés de front — 3 sature moins la 4G d'une salle */
@@ -83,6 +98,16 @@ export const ARCHIVE_MAX_SECONDS = 300;
  */
 export const ARCHIVE_CONCURRENCY = 6;
 
+/**
+ * Plafond mémoire des lectures d'avance de l'archive.
+ *
+ * Une entrée est tenue entière le temps d'en calculer le CRC : `photos`
+ * lues de front, ce sont autant de fichiers en mémoire. Six photos ne pèsent
+ * rien ; six vidéos de 150 Mo dépassent ce dont dispose une fonction Vercel.
+ * Le parallélisme se réduit donc tout seul quand les fichiers grossissent.
+ */
+export const ARCHIVE_READAHEAD_BYTES = 160 * 1024 * 1024;
+
 /** Extension d'un nom de fichier, en minuscules, sans le point */
 export function fileExtension(filename: string): string {
   const dot = filename.lastIndexOf(".");
@@ -95,14 +120,31 @@ export function isAllowedFile(filename: string): boolean {
   );
 }
 
-/** Type MIME déduit de l'extension, pour servir une photo telle quelle. */
-export function imageMimeType(filename: string): string {
+/**
+ * Vidéo ou photo ? Toute l'app se pose la question à partir du seul nom du
+ * fichier : c'est la seule chose qu'elle connaisse d'un bout à l'autre, du
+ * fichier choisi dans le téléphone jusqu'au chemin Dropbox de la galerie.
+ */
+export function isVideoFile(filename: string): boolean {
+  return (VIDEO_EXTENSIONS as readonly string[]).includes(
+    fileExtension(filename),
+  );
+}
+
+/** Type MIME déduit de l'extension, pour servir un fichier tel quel. */
+export function mediaMimeType(filename: string): string {
   const extension = fileExtension(filename);
+
   if (extension === "jpg" || extension === "jpeg") return "image/jpeg";
-  if (extension === "heic" || extension === "heif") return `image/${extension}`;
-  return (ALLOWED_EXTENSIONS as readonly string[]).includes(extension)
-    ? `image/${extension}`
-    : "application/octet-stream";
+  if (extension === "mov") return "video/quicktime";
+  // Un .m4v est un conteneur MP4 : l'annoncer autrement le rendrait illisible
+  if (extension === "m4v" || extension === "mp4") return "video/mp4";
+  if (extension === "webm") return "video/webm";
+  if ((IMAGE_EXTENSIONS as readonly string[]).includes(extension)) {
+    return `image/${extension}`;
+  }
+
+  return "application/octet-stream";
 }
 
 /** Taille lisible : « 850 Ko », « 4,2 Mo », « 1,3 Go » */

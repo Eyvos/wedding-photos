@@ -1,10 +1,10 @@
 import { immutableImageHeaders, transientErrorHeaders } from "@/lib/cache-headers";
-import { imageMimeType } from "@/lib/config";
+import { isVideoFile, mediaMimeType } from "@/lib/config";
 import {
   THUMBNAIL_SIZES,
   downloadPhoto,
   getThumbnail,
-  isPhotoPath,
+  isMediaPath,
   type ThumbnailSize,
 } from "@/lib/dropbox";
 
@@ -31,8 +31,18 @@ export async function GET(request: Request) {
   const size = searchParams.get("size") ?? "w640h480";
   const mode = searchParams.get("mode") === "bestfit" ? "bestfit" : "strict";
 
-  if (!isPhotoPath(path) || !isThumbnailSize(size)) {
+  if (!isMediaPath(path) || !isThumbnailSize(size)) {
     return new Response("Photo introuvable.", { status: 400 });
+  }
+
+  // Dropbox ne vignette pas les vidéos, et le repli ci-dessous enverrait
+  // alors le film entier pour remplir une case de 256 pixels. L'interface
+  // n'en demande pas ; si la demande arrive quand même, elle s'arrête ici.
+  if (isVideoFile(path)) {
+    return new Response("Pas de vignette pour une vidéo.", {
+      status: 415,
+      headers: transientErrorHeaders(),
+    });
   }
 
   let response = await getThumbnail(path, size, mode);
@@ -43,7 +53,7 @@ export async function GET(request: Request) {
   if (!response.ok) {
     await response.body?.cancel();
     response = await downloadPhoto(path);
-    type = imageMimeType(path);
+    type = mediaMimeType(path);
   }
 
   if (!response.ok) {

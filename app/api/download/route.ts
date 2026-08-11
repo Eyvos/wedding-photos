@@ -3,7 +3,7 @@ import {
   readArchiveRequest,
   resolveArchive,
 } from "@/lib/archive-server";
-import { ARCHIVE_CONCURRENCY } from "@/lib/config";
+import { ARCHIVE_CONCURRENCY, ARCHIVE_READAHEAD_BYTES } from "@/lib/config";
 import { attachmentHeader, downloadError } from "@/lib/download";
 import { downloadPhoto } from "@/lib/dropbox";
 import type { Photo } from "@/lib/gallery";
@@ -64,17 +64,21 @@ export async function POST(request: Request) {
       archive.flat ? photo.name : `${photo.guest}/${photo.name}`,
       taken,
     ),
+    size: photo.size,
     modified: photo.uploadedAt ? new Date(photo.uploadedAt) : new Date(),
     read: () => readPhoto(photo),
   }));
 
-  return new Response(createZipStream(entries, ARCHIVE_CONCURRENCY), {
-    headers: {
-      "Content-Type": "application/zip",
-      "Content-Disposition": attachmentHeader(`${archive.name}.zip`),
-      "Cache-Control": "no-store",
+  return new Response(
+    createZipStream(entries, ARCHIVE_CONCURRENCY, ARCHIVE_READAHEAD_BYTES),
+    {
+      headers: {
+        "Content-Type": "application/zip",
+        "Content-Disposition": attachmentHeader(`${archive.name}.zip`),
+        "Cache-Control": "no-store",
+      },
     },
-  });
+  );
 }
 
 /**

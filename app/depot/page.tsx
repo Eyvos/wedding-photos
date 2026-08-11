@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import PageHeader from "../components/PageHeader";
 import UploadZone from "../components/UploadZone";
 
-export const metadata: Metadata = { title: "Déposer des photos" };
+export const metadata: Metadata = { title: "Déposer des photos et vidéos" };
 
 export default function DepotPage() {
   return (
@@ -11,8 +11,8 @@ export default function DepotPage() {
       <PageHeader
         backHref="/"
         backLabel="Accueil"
-        title="Déposer des photos"
-        subtitle="Ton prénom, tes photos, et c'est parti. Rien à installer."
+        title="Déposer des souvenirs"
+        subtitle="Ton prénom, tes photos et tes vidéos, et c'est parti. Rien à installer."
       />
 
       <UploadZone />
@@ -20,8 +20,8 @@ export default function DepotPage() {
       <footer className="mt-14 space-y-3 text-center text-sm text-base-content/50">
         <div className="rule mx-auto w-24" />
         <p>
-          Les photos rejoignent l&apos;album des mariés. Une fois déposées,
-          elles restent : personne ne peut en supprimer.
+          Tout rejoint l&apos;album des mariés. Une fois déposées, les photos
+          et les vidéos restent : personne ne peut en supprimer.
         </p>
       </footer>
     </main>

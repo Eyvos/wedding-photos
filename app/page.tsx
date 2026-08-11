@@ -21,8 +21,8 @@ export default function Home() {
         <ChoiceCard
           href="/depot"
           icon={<CameraIcon className="size-7" />}
-          title="Déposer des photos"
-          description="Envoyer les photos que tu as prises pendant la journée."
+          title="Déposer des souvenirs"
+          description="Envoyer les photos et les vidéos que tu as prises pendant la journée."
         />
         <ChoiceCard
           href="/photos"

@@ -90,3 +90,14 @@ export function thumbUrl(
 export function photoDownloadUrl(photo: PhotoCard): string {
   return `/api/photo?${new URLSearchParams({ path: photo.path })}`;
 }
+
+/**
+ * Adresse du fichier d'origine servi tel quel, à lire dans la page — c'est
+ * la source de la balise <video>. Même route que le téléchargement, sans la
+ * pièce jointe : autrement le navigateur enregistrerait le film au lieu de
+ * le jouer.
+ */
+export function mediaStreamUrl(photo: PhotoCard): string {
+  const params = new URLSearchParams({ path: photo.path, inline: "1" });
+  return `/api/photo?${params}`;
+}

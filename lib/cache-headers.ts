@@ -32,6 +32,21 @@ export function immutableImageHeaders(type: string): Headers {
 }
 
 /**
+ * Un morceau de fichier (réponse 206, demandée par un lecteur vidéo qui se
+ * déplace dans la bande). Surtout pas de cache partagé : l'adresse est la
+ * même pour tous les morceaux, et un CDN qui en retiendrait un le servirait
+ * ensuite à qui demande le fichier entier.
+ */
+export function partialContentHeaders(type: string): Headers {
+  return new Headers({
+    "Content-Type": type,
+    "Cache-Control": "private, no-store",
+    "CDN-Cache-Control": "no-store",
+    "Vercel-CDN-Cache-Control": "no-store",
+  });
+}
+
+/**
  * Une réponse d'erreur ne doit pas se figer une année au bord du CDN :
  * une photo introuvable parce que Dropbox toussait doit pouvoir réapparaître.
  */

@@ -4,7 +4,14 @@
  *
  * Le mot « dossier » n'apparaît nulle part côté interface — pour un invité,
  * il n'y a que des invités et leurs photos.
+ *
+ * « Photo » désigne ici n'importe quel souvenir de l'album, vidéos comprises :
+ * les deux se listent, se cochent et se téléchargent exactement pareil. Là où
+ * la différence compte — vignette, affichage plein écran, libellés —, on la
+ * lit dans l'extension du chemin, via `isVideo`.
  */
+
+import { isVideoFile } from "./config";
 
 export type Photo = {
   /** Chemin Dropbox : identifiant stable d'une photo dans toute l'app */
@@ -17,6 +24,15 @@ export type Photo = {
   /** Arrivée dans l'album, en ISO — sert au tri chronologique */
   uploadedAt: string;
 };
+
+/**
+ * Une vidéo plutôt qu'une photo ? Rien n'est transmis pour le dire : le
+ * chemin porte déjà l'extension, et la recopier dans chaque carte coûterait
+ * un champ de plus par souvenir sur un album qui en compte des milliers.
+ */
+export function isVideo(photo: Pick<Photo, "path">): boolean {
+  return isVideoFile(photo.path);
+}
 
 /**
  * Ce qu'une vignette a besoin de savoir pour s'afficher, s'ouvrir et se
@@ -44,6 +60,8 @@ export type Guest = {
   /** Identifiant d'URL, sans accent ni espace */
   slug: string;
   photos: Photo[];
+  /** Combien, parmi `photos`, sont des vidéos — pour les libellés */
+  videos: number;
   /** Poids cumulé des photos de l'invité */
   size: number;
 };
@@ -60,8 +78,10 @@ export type Guest = {
 export type GuestSummary = {
   name: string;
   slug: string;
-  /** Nombre de photos déposées */
+  /** Nombre de photos déposées, vidéos comprises */
   count: number;
+  /** Combien de ces dépôts sont des vidéos */
+  videos: number;
   size: number;
   /** Chemins des quelques photos de la mosaïque d'aperçu */
   preview: string[];
@@ -72,8 +92,14 @@ export function summarize(guest: Guest, previewCount: number): GuestSummary {
     name: guest.name,
     slug: guest.slug,
     count: guest.photos.length,
+    videos: guest.videos,
     size: guest.size,
-    preview: guest.photos.slice(0, previewCount).map((photo) => photo.path),
+    // Une vidéo n'a pas de vignette à montrer : la mosaïque se compose des
+    // seules photos, quitte à rester vide pour qui n'a envoyé que des films.
+    preview: guest.photos
+      .filter((photo) => !isVideo(photo))
+      .slice(0, previewCount)
+      .map((photo) => photo.path),
   };
 }
 
@@ -86,7 +112,7 @@ export const UNKNOWN_GUEST = "Invité anonyme";
  */
 const STAMP_PREFIX = /^\d{4}-\d{2}-\d{2}T[\d-]+Z_/;
 
-export function photoDisplayName(filename: string): string {
+export function mediaDisplayName(filename: string): string {
   return filename.replace(STAMP_PREFIX, "");
 }
 
@@ -105,6 +131,10 @@ export function slugify(name: string): string {
 
 export function totalPhotos(guests: Guest[]): number {
   return guests.reduce((sum, guest) => sum + guest.photos.length, 0);
+}
+
+export function totalVideos(guests: Guest[]): number {
+  return guests.reduce((sum, guest) => sum + guest.videos, 0);
 }
 
 export function totalSize(guests: Guest[]): number {
@@ -138,6 +168,27 @@ export function photosOf(guests: Guest[], source: PhotoSource): Photo[] {
 /** « 3 photos », « 1 photo » — l'accord au bon endroit, partout pareil */
 export function photoCount(count: number): string {
   return `${count} photo${count > 1 ? "s" : ""}`;
+}
+
+export function videoCount(count: number): string {
+  return `${count} vidéo${count > 1 ? "s" : ""}`;
+}
+
+/**
+ * Le décompte d'un ensemble mêlant les deux : « 12 photos et 2 vidéos ».
+ * On ne nomme les vidéos que s'il y en a — annoncer « 12 photos et 0 vidéo »
+ * à un album qui n'en contient aucune serait du bruit.
+ *
+ * `total` compte tout, `videos` en est une part : c'est ce que les pages ont
+ * sous la main sans avoir à parcourir l'album une fois de plus.
+ */
+export function mediaCount(total: number, videos: number): string {
+  const photos = total - videos;
+
+  if (videos === 0) return photoCount(photos);
+  if (photos === 0) return videoCount(videos);
+
+  return `${photoCount(photos)} et ${videoCount(videos)}`;
 }
 
 export function guestCount(count: number): string {

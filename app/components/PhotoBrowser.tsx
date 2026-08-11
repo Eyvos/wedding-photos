@@ -1,10 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { ArchiveRequest } from "@/lib/archive";
 import { GALLERY_PAGE_SIZE, formatBytes } from "@/lib/config";
-import { photoCount, type PhotoCard, type PhotoPage, type PhotoSource } from "@/lib/gallery";
+import {
+  isVideo,
+  mediaCount,
+  type PhotoCard,
+  type PhotoPage,
+  type PhotoSource,
+} from "@/lib/gallery";
 
 import ActionBar from "./ActionBar";
 import ArchiveDialog from "./ArchiveDialog";
@@ -31,6 +37,8 @@ type Props = {
   initial: PhotoCard[];
   /** Nombre total de photos de la source */
   total: number;
+  /** Combien de ces photos sont des vidéos — pour le décompte affiché */
+  videos: number;
   /** Poids cumulé, connu du serveur seul puisqu'il a tout le catalogue */
   size: number;
   /** Où aller chercher les tranches suivantes */
@@ -42,6 +50,7 @@ type Props = {
 export default function PhotoBrowser({
   initial,
   total,
+  videos,
   size,
   source,
   everything,
@@ -140,10 +149,16 @@ export default function PhotoBrowser({
     [selected],
   );
 
+  /** Le chemin suffit à reconnaître une vidéo : son extension y est */
+  const selectedVideos = useMemo(
+    () => [...selected].filter((path) => isVideo({ path })).length,
+    [selected],
+  );
+
   if (total === 0) {
     return (
       <p className="rounded-box border border-dashed border-base-300 px-6 py-16 text-center text-base-content/60">
-        Aucune photo pour le moment.
+        Rien à voir pour le moment.
       </p>
     );
   }
@@ -152,7 +167,7 @@ export default function PhotoBrowser({
     <>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-base-content/60">
-          {photoCount(total)} · {formatBytes(size)}
+          {mediaCount(total, videos)} · {formatBytes(size)}
         </p>
         <button
           type="button"
@@ -175,7 +190,10 @@ export default function PhotoBrowser({
       </div>
 
       <ul className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 sm:gap-2">
-        {photos.map((photo, index) => (
+        {photos.map((photo, index) => {
+          const kind = isVideo(photo) ? "vidéo" : "photo";
+
+          return (
           <li key={photo.path} className="tile-square relative">
             {/* Au survol : la photo avance d'un cheveu et un liseré s'allume.
                 Le zoom seul passait inaperçu — il fallait quelque chose qui
@@ -184,13 +202,13 @@ export default function PhotoBrowser({
               type="button"
               className="group block size-full cursor-pointer overflow-hidden rounded-field bg-base-200 ring-primary/0 ring-offset-1 ring-offset-base-100 transition duration-200 hover:ring-2 hover:ring-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
               onClick={() => setOpenAt(index)}
-              aria-label={`Ouvrir la photo envoyée par ${photo.guest}`}
+              aria-label={`Ouvrir la ${kind} envoyée par ${photo.guest}`}
             >
               <span className="block size-full transition-transform duration-300 group-hover:scale-105">
                 <Thumb
                   photo={photo}
                   size="w256h256"
-                  alt={`Photo envoyée par ${photo.guest}`}
+                  alt={`${kind === "vidéo" ? "Vidéo" : "Photo"} envoyée par ${photo.guest}`}
                   eager={index < 12}
                 />
               </span>
@@ -199,11 +217,12 @@ export default function PhotoBrowser({
             <SelectMark
               checked={isSelected(photo)}
               onChange={() => toggle(photo)}
-              label={`Sélectionner la photo de ${photo.guest}`}
+              label={`Sélectionner la ${kind} de ${photo.guest}`}
               className="absolute right-1.5 top-1.5"
             />
           </li>
-        ))}
+          );
+        })}
 
         {/* Les cases à venir : la grille garde sa hauteur pendant le chargement */}
         {loading &&
@@ -232,7 +251,7 @@ export default function PhotoBrowser({
               aria-live="polite"
             >
               <span className="loading loading-spinner loading-xs" />
-              Chargement des photos suivantes…
+              Chargement de la suite…
             </p>
           )}
         </div>
@@ -240,7 +259,7 @@ export default function PhotoBrowser({
 
       {selected.size > 0 && (
         <ActionBar
-          summary={`${photoCount(selected.size)} sélectionnée${selected.size > 1 ? "s" : ""}`}
+          summary={`${mediaCount(selected.size, selectedVideos)} sélectionnée${selected.size > 1 ? "s" : ""}`}
           pending={download.pending}
           onClear={() => setSelected(new Set())}
           onDownload={() =>

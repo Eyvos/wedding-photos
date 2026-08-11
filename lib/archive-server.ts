@@ -8,7 +8,7 @@
 
 import type { ArchivePlan, ArchiveRequest } from "./archive";
 import { listGuests } from "./dropbox";
-import { guestCount, photoCount, type Photo } from "./gallery";
+import { guestCount, isVideo, mediaCount, type Photo } from "./gallery";
 
 export type ResolvedArchive = {
   /** Toutes les photos concernées, dans un ordre stable */
@@ -83,7 +83,7 @@ export async function resolveArchive(
       .filter((photo) => wanted.has(photo.path));
 
     flat = new Set(photos.map((photo) => photo.guest)).size <= 1;
-    name = `Photos - ${photoCount(photos.length)}`;
+    name = `Photos - ${mediaCount(photos.length, photos.filter(isVideo).length)}`;
   }
 
   if (photos.length === 0) {

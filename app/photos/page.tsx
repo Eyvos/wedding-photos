@@ -4,11 +4,12 @@ import { GALLERY_PAGE_SIZE, GUEST_PREVIEW_COUNT } from "@/lib/config";
 import { listGuests } from "@/lib/dropbox";
 import {
   allPhotos,
-  photoCount,
+  mediaCount,
   summarize,
   toCard,
   totalPhotos,
   totalSize,
+  totalVideos,
 } from "@/lib/gallery";
 
 import GuestBrowser from "../components/GuestBrowser";
@@ -40,6 +41,7 @@ export default async function PhotosPage(props: PageProps<"/photos">) {
   // la vue par invité s'en passe, ses photos étant déjà rangées par prénom.
   const photos = guests && !byGuest ? allPhotos(guests) : [];
   const count = guests ? totalPhotos(guests) : 0;
+  const videos = guests ? totalVideos(guests) : 0;
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 py-8 sm:py-12">
@@ -48,7 +50,9 @@ export default async function PhotosPage(props: PageProps<"/photos">) {
         backLabel="Accueil"
         title="Les photos du mariage"
         subtitle={
-          guests ? `${photoCount(count)} déposées par les invités.` : undefined
+          guests
+            ? `${mediaCount(count, videos)} déposées par les invités.`
+            : undefined
         }
       />
 
@@ -67,6 +71,7 @@ export default async function PhotosPage(props: PageProps<"/photos">) {
             <PhotoBrowser
               initial={photos.slice(0, GALLERY_PAGE_SIZE).map(toCard)}
               total={photos.length}
+              videos={videos}
               size={totalSize(guests)}
               source={{ scope: "all" }}
               everything={{ request: { scope: "all" }, label: "Tout télécharger" }}
